@@ -1,3 +1,6 @@
+### Added thing : you can delete ALL @me channels (personal messages, group messages) by checking "ALL @me Channels"
+<img src="https://raw.githubusercontent.com/cg10036/deleteDiscordMessages/master/2020-05-12%20183113.jpg" height="300">
+
 # Delete all messages in a Discord channel or DM
 
 1. Select and Copy this script: [deleteDiscordMessages.js](https://raw.githubusercontent.com/victornpb/deleteDiscordMessages/master/deleteDiscordMessages.js)
