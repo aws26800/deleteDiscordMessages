@@ -23,7 +23,8 @@
             <span>Guild/Channel <a href="https://github.com/victornpb/deleteDiscordMessages/blob/master/help/channelId.md" title="Help">?</a>
                 <button id="getGuildAndChannel">Get</button><br>
                 <input id="guildId" type="text" placeholder="Guild ID" priv><br>
-                <input id="channelId" type="text" placeholder="Channel ID" priv></span><br>
+                <input id="channelId" type="text" placeholder="Channel ID" priv><br>
+                <label><input id="deleteMe" type="checkbox">ALL @me Channels</label></span><br>
             <span>Range <a href="https://github.com/victornpb/deleteDiscordMessages/blob/master/help/messageId.md" title="Help">?</a><br>
                 <input id="afterMessageId" type="text" placeholder="After messageId" priv><br>
                 <input id="beforeMessageId" type="text" placeholder="Before messageId" priv>
@@ -50,6 +51,7 @@
     const startBtn = popup.document.querySelector('button#start');
     const stopBtn = popup.document.querySelector('button#stop');
     const autoScroll = popup.document.querySelector('#autoScroll');
+    const allMeChannels = popup.document.querySelector('#deleteMe');
     startBtn.onclick = e => {
         const authToken = popup.document.querySelector('input#authToken').value.trim();
         const authorId = popup.document.querySelector('input#authorId').value.trim();
@@ -62,9 +64,22 @@
         const hasFile = popup.document.querySelector('input#hasFile').checked;
         const includeNsfw = popup.document.querySelector('input#includeNsfw').checked;
         stop = stopBtn.disabled = !(startBtn.disabled = true);
-        deleteMessages(authToken, authorId, guildId, channelId, afterMessageId, beforeMessageId, content, hasLink, hasFile, includeNsfw, logger, () => !(stop === true || popup.closed)).then(() => {
-            stop = stopBtn.disabled = !(startBtn.disabled = false);
-        });
+        if(allMeChannels.checked == true) {
+            var meChannels = getMeChannels();
+            var count = 0;
+            for(var i = 0;i < meChannels.length;i++) {
+                deleteMessages(authToken, authorId, "@me", meChannels[i], afterMessageId, beforeMessageId, content, hasLink, hasFile, includeNsfw, logger, () => !(stop === true || popup.closed)).then(() => {
+                    count++;
+                    if(count == meChannels.length) {
+                        stop = stopBtn.disabled = !(startBtn.disabled = false);
+                    }
+                });
+            }
+        } else {
+            deleteMessages(authToken, authorId, guildId, channelId, afterMessageId, beforeMessageId, content, hasLink, hasFile, includeNsfw, logger, () => !(stop === true || popup.closed)).then(() => {
+                stop = stopBtn.disabled = !(startBtn.disabled = false);
+            });
+        }
     };
     stopBtn.onclick = e => stop = stopBtn.disabled = !(startBtn.disabled = false);
     popup.document.querySelector('button#clear').onclick = e => { logArea.innerHTML = ''; };
@@ -92,6 +107,27 @@
     };
 
     return 'Looking good!';
+
+    function sleep (delay) {
+        var start = new Date().getTime();
+        while (new Date().getTime() < start + delay);
+    }
+
+    function getMeChannels()
+    {
+        var xpath = "//a[contains(@href,'@me/')]";
+        var parent = null;
+        let results = [];
+        let query = document.evaluate(xpath, parent || document,
+            null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+        for (let i = 0, length = query.snapshotLength; i < length; ++i) {
+            if(query.snapshotItem(i).className.includes("channel")) {
+                results.push(query.snapshotItem(i).href.split("/")[5]);
+            }
+        }
+        return results;
+    }
+
     /**
      * Delete all messages in a Discord channel or DM
      * @param {string} authToken Your authorization token
@@ -225,15 +261,6 @@
             
             
             if (myMessages.length > 0) {
-
-                if (iterations < 1) {
-                    log.verb(`Waiting for your confirmation...`);
-                    if (!await ask(`Do you want to delete ~${total} messages?\nEstimated time: ${etr}\n\n---- Preview ----\n` +
-                        myMessages.map(m => `${m.author.username}#${m.author.discriminator}: ${m.attachments.length ? '[ATTACHMENTS]' : m.content}`).join('\n')))
-                            return end(log.error('Aborted by you!'));
-                    log.verb(`OK`);
-                }
-                
                 for (let i = 0; i < deletableMessages.length; i++) {
                     const message = deletableMessages[i];
                     if (stopHndl && stopHndl()===false) return end(log.error('Stopped by you!'));
