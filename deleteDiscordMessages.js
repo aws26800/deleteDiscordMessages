@@ -52,7 +52,7 @@
     const stopBtn = popup.document.querySelector('button#stop');
     const autoScroll = popup.document.querySelector('#autoScroll');
     const allMeChannels = popup.document.querySelector('#deleteMe');
-    startBtn.onclick = e => {
+    startBtn.onclick = async e => {
         const authToken = popup.document.querySelector('input#authToken').value.trim();
         const authorId = popup.document.querySelector('input#authorId').value.trim();
         const guildId = popup.document.querySelector('input#guildId').value.trim();
@@ -65,7 +65,9 @@
         const includeNsfw = popup.document.querySelector('input#includeNsfw').checked;
         stop = stopBtn.disabled = !(startBtn.disabled = true);
         if(allMeChannels.checked == true) {
-            var meChannels = getMeChannels();
+            var meChannels = await getMeChannels();
+            popup.document.querySelector('input#guildId').value = "@me";
+            popup.document.querySelector('input#channelId').value = meChannels.length + " Channels Selected.";
             var count = 0;
             for(var i = 0;i < meChannels.length;i++) {
                 deleteMessages(authToken, authorId, "@me", meChannels[i], afterMessageId, beforeMessageId, content, hasLink, hasFile, includeNsfw, logger, () => !(stop === true || popup.closed)).then(() => {
@@ -108,24 +110,40 @@
 
     return 'Looking good!';
 
-    function sleep (delay) {
-        var start = new Date().getTime();
-        while (new Date().getTime() < start + delay);
-    }
-
-    function getMeChannels()
+    async function getMeChannels()
     {
         var xpath = "//a[contains(@href,'@me/')]";
         var parent = null;
         let results = [];
-        let query = document.evaluate(xpath, parent || document,
-            null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-        for (let i = 0, length = query.snapshotLength; i < length; ++i) {
-            if(query.snapshotItem(i).className.includes("channel")) {
-                results.push(query.snapshotItem(i).href.split("/")[5]);
+        
+        var oldScroll = -300;
+        var scroll = -300;
+        var _scroll = document.evaluate("//div[contains(@class,'scroller')]", document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null).snapshotItem(3);
+        while(true) {
+            scroll += 300;
+            _scroll.scrollTop = scroll;
+            scroll = _scroll.scrollTop;
+            await sleep(750);
+            if(oldScroll == scroll) {
+                break;
+            } else {
+                oldScroll = scroll;
             }
+            let query = document.evaluate(xpath, parent || document,
+                null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+            for (let i = 0, length = query.snapshotLength; i < length; ++i) {
+                if(query.snapshotItem(i).className.includes("channel")) {
+                    results.push(query.snapshotItem(i).href.split("/")[5]);
+                }
+            }
+            results = Array.from(new Set(results));
         }
+        
         return results;
+    }
+    
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     /**
